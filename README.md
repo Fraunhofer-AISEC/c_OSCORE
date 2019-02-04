@@ -6,7 +6,7 @@ The ipsp and coap_server samples of zephyr are combined to set up CoAP over 6low
 On top of that OSCORE is implemented.
 
 Developed and tested with zephyr commit
- [3712fd34154f0db06085135e4bbfed4b63c34d85](https://github.com/zephyrproject-rtos/zephyr/commit/3712fd34154f0db06085135e4bbfed4b63c34d85).
+[3712fd34154f0db06085135e4bbfed4b63c34d85](https://github.com/zephyrproject-rtos/zephyr/commit/3712fd34154f0db06085135e4bbfed4b63c34d85).
 
 # Building
 
@@ -150,6 +150,151 @@ Those macros take a `CborError` as last parameter, which is returned if the cond
     * Create output packet header
     * Write Class U options
     * Copy encrypted payload
+    
+# Quick Overview over OSCORE
+
+### OSCORE Packet
+
+* [CoAP Packet](#coap-packet) with [OSCORE Option](#oscore-option)
+    and [OSCORE Ciphertext](#oscore-ciphertext) as Payload
+
+
+##### CoAP Packet
+
+* <https://tools.ietf.org/html/rfc7252#section-3>
+
+```
+0                   1                   2                   3
+0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|Ver| T |  TKL  |      Code     |          Message ID           |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|   Token (if any, TKL bytes) ...
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|   Options (if any) ...
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|1 1 1 1 1 1 1 1|    Payload (if any) ...
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+###### CoAP Options
+
+* <https://tools.ietf.org/html/rfc7252#section-3.1>
+
+```
+  0   1   2   3   4   5   6   7
++---------------+---------------+
+|  Option Delta | Option Length |   1 byte
++---------------+---------------+
+.         Option Delta          .   0-2 bytes
+.          (extended)           .
++-------------------------------+
+.         Option Length         .   0-2 bytes
+.          (extended)           .
++-------------------------------+
+.         Option Value          .   0 or more bytes
+.                               .
++-------------------------------+
+```
+
+##### OSCORE Option
+
+* <https://tools.ietf.org/html/draft-ietf-core-object-security-14#section-6.1>
+
+```
+ 0 1 2 3 4 5 6 7 <------------- n bytes -------------->
++-+-+-+-+-+-+-+-+--------------------------------------
+|0 0 0|h|k|  n  |       Partial IV (if any) ...
++-+-+-+-+-+-+-+-+--------------------------------------
+
+ <- 1 byte -> <----- s bytes ------>
++------------+----------------------+------------------+
+| s (if any) | kid context (if any) | kid (if any) ... |
++------------+----------------------+------------------+
+```
+
+##### OSCORE Ciphertext
+
+* AES-CCM-16-64-128 
+    * 8 byte mac
+    * 13 byte nonce
+* Key: Sender Key
+* Nonce: [OSCORE Nonce](#oscore-nonce)
+* Plaintext: [OSCORE Plaintext](#oscore-plaintext)
+* AAD: [OSCORE COSE Object](#oscore-cose-object)
+
+###### OSCORE Nonce
+
+* <https://tools.ietf.org/html/draft-ietf-core-object-security-14#section-5.2>
+
+```
+     <- nonce length minus 6 B -> <-- 5 bytes -->
++---+-------------------+--------+---------+-----+
+| S |      padding      | ID_PIV | padding | PIV |----+
++---+-------------------+--------+---------+-----+    |
+                                                      |
+ <---------------- nonce length ---------------->     |
++------------------------------------------------+    |
+|                   Common IV                    |->(XOR)
++------------------------------------------------+    |
+                                                      |
+ <---------------- nonce length ---------------->     |
++------------------------------------------------+    |
+|                     Nonce                      |<---+
++------------------------------------------------+
+```
+
+
+###### OSCORE Plaintext
+
+* <https://tools.ietf.org/html/draft-ietf-core-object-security-14#section-5.3>
+
+```
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|     Code      |    Class E options (if any) ...
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|1 1 1 1 1 1 1 1|    Payload (if any) ...
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ (only if there
+   is payload)
+```
+
+###### OSCORE COSE Object
+
+* <https://tools.ietf.org/html/draft-ietf-core-object-security-14#section-5>
+* Enc-Structure
+* CBOR encoded as array
+
+```
++----------------------+
+| Context ("Encrypt0") |
++----------------------+
+|    Protected ("")    |
++----------------------+
+|     external_aad     | (see OSCORE AAD)
++----------------------+
+```
+
+###### OSCORE AAD
+
+* <https://tools.ietf.org/html/draft-ietf-core-object-security-14#section-5.4>
+* CBOR encoded as array
+
+```
++-------------------------+
+|    OSCORE Version (1)   |
++-------------------------+
+| Algorithms ([alg_aead]) |
++-------------------------+
+|       request_kid       |
++-------------------------+
+|       request_piv       |
++-------------------------+
+|      Class I Options    |
++-------------------------+
+```
 
 # Future Work
 
