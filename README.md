@@ -8,6 +8,27 @@ On top of that OSCORE is implemented.
 Developed and tested with zephyr commit
 [3712fd34154f0db06085135e4bbfed4b63c34d85](https://github.com/zephyrproject-rtos/zephyr/commit/3712fd34154f0db06085135e4bbfed4b63c34d85).
 
+* [Building](#building)
+* [Documentation / Doxygen](#documentation--doxygen)
+* [Structure](#structure)
+    * [Folders](#folders)
+    * [Error Handling](#error-handling)
+        * [Assertions / Ensure](#assertions--ensure)
+    * [Packet Flow](#packet-flow)
+* [Quick Overview over OSCORE](#quick-overview-over-oscore)
+    * [OSCORE Packet](#oscore-packet)
+        * [CoAP Packet](#coap-packet)
+            * [CoAP Options](#coap-options)
+        * [OSCORE Option](#oscore-option)
+        * [OSCORE Ciphertext](#oscore-ciphertext)
+            * [OSCORE Nonce](#oscore-nonce)
+            * [OSCORE Plaintext](#oscore-plaintext)
+            * [OSCORE COSE Object](#oscore-cose-object)
+            * [OSCORE AAD](#oscore-aad)
+* [Future Work](#future-work)
+* [Licensing](#licensing)
+* [Contribution](#contribution)
+
 # Building
 
 The arm-none-eabi-gcc toolchain must be installed.
