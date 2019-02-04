@@ -1,0 +1,196 @@
+/*
+ * Copyright (c) 2019 Fraunhofer AISEC. See the COPYRIGHT
+ * file at the top-level directory of this distribution.
+ *
+ * Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+ * http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+ * <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+ * option. This file may not be copied, modified, or distributed
+ * except according to those terms.
+ */
+
+#include "util/error.h"
+#include "util/array.h"
+#include "util/macros.h"
+#include "crypto/hkdf.h"
+#include "crypto/security_context.h"
+
+void test_hkdf_sha256_tc1() {
+    u8_t ikm_bytes[22] = { 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b,
+                           0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b,
+                           0x0b, 0x0b, 0x0b, 0x0b, 0x0b, 0x0b };
+    u8_t salt_bytes[13] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+                            0x08, 0x09, 0x0a, 0x0b, 0x0c };
+    u8_t info_bytes[10] =  { 0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7,
+                             0xf8, 0xf9 };
+    u8_t out_bytes[42] = { 0 };
+    array ikm = { .len = sizeof(ikm_bytes), .ptr = ikm_bytes };
+    array salt = { .len = sizeof(salt_bytes), .ptr = salt_bytes };
+    array info = { .len = sizeof(info_bytes), .ptr = info_bytes };
+    array out = { .len = sizeof(out_bytes), .ptr = out_bytes };
+    int res = hkdf_sha256(salt, ikm, info, out);
+    if (res != OscoreNoError) {
+        panic("Error during hkdf_sha256: %d, spinning...", res);
+    }
+
+    // PRK = 0x077709362c2e32df0ddc3f0dc47bba63
+    //       90b6c73bb50f9c3122ec844ad7c2b3e5 (32 octets)
+    u8_t expected_bytes[42] = { 0x3c, 0xb2, 0x5f, 0x25, 0xfa, 0xac, 0xd5, 0x7a,
+                                0x90, 0x43, 0x4f, 0x64, 0xd0, 0x36, 0x2f, 0x2a,
+                                0x2d, 0x2d, 0x0a, 0x90, 0xcf, 0x1a, 0x5a, 0x4c,
+                                0x5d, 0xb0, 0x2d, 0x56, 0xec, 0xc4, 0xc5, 0xbf,
+                                0x34, 0x00, 0x72, 0x08, 0xd5, 0xb8, 0x87, 0x18,
+                                0x58, 0x65 };
+    array expected = { .len = sizeof(expected_bytes), .ptr = expected_bytes };
+    if (!array_equals(out, expected)) {
+        SYS_LOG_ERR("test_hkdf_sha256 Test Case 1 failed with invalid output");
+        log_hex("out", out.ptr, out.len);
+        log_hex("expected", expected.ptr, expected.len);
+        panic("spinning...");
+    }
+    SYS_LOG_INF("test_hkdf_sha256 TestCase 1 successful");
+}
+
+void test_hkdf_sha256_tc2() {
+    u8_t ikm_bytes[80] = {
+            0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+            0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+            0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
+            0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f,
+            0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f
+    };
+    u8_t salt_bytes[80] = {
+            0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6a, 0x6b, 0x6c, 0x6d, 0x6e, 0x6f,
+            0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x79, 0x7a, 0x7b, 0x7c, 0x7d, 0x7e, 0x7f,
+            0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f,
+            0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9a, 0x9b, 0x9c, 0x9d, 0x9e, 0x9f,
+            0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7, 0xa8, 0xa9, 0xaa, 0xab, 0xac, 0xad, 0xae, 0xaf,
+    };
+    u8_t info_bytes[80] =  {
+            0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7, 0xb8, 0xb9, 0xba, 0xbb, 0xbc, 0xbd, 0xbe, 0xbf,
+            0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7, 0xc8, 0xc9, 0xca, 0xcb, 0xcc, 0xcd, 0xce, 0xcf,
+            0xd0, 0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8, 0xd9, 0xda, 0xdb, 0xdc, 0xdd, 0xde, 0xdf,
+            0xe0, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7, 0xe8, 0xe9, 0xea, 0xeb, 0xec, 0xed, 0xee, 0xef,
+            0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff
+    };
+    u8_t out_bytes[82] = { 0 };
+    array ikm = { .len = 80, .ptr = ikm_bytes };
+    array salt = { .len = 80, .ptr = salt_bytes };
+    array info = { .len = 80, .ptr = info_bytes };
+    array out = { .len = 82, .ptr = out_bytes };
+    int res = hkdf_sha256(salt, ikm, info, out);
+    if (res != OscoreNoError) {
+        panic("Error during hkdf_sha256: %d, spinning...", res);
+    }
+
+    // PRK = 0x06a6b88c5853361a06104c9ceb35b45c
+    //       ef760014904671014a193f40c15fc244 (32 octets)
+    u8_t expected_bytes[82] = {
+            0xb1, 0x1e, 0x39, 0x8d, 0xc8, 0x03, 0x27, 0xa1, 0xc8, 0xe7, 0xf7, 0x8c, 0x59, 0x6a, 0x49, 0x34,
+            0x4f, 0x01, 0x2e, 0xda, 0x2d, 0x4e, 0xfa, 0xd8, 0xa0, 0x50, 0xcc, 0x4c, 0x19, 0xaf, 0xa9, 0x7c,
+            0x59, 0x04, 0x5a, 0x99, 0xca, 0xc7, 0x82, 0x72, 0x71, 0xcb, 0x41, 0xc6, 0x5e, 0x59, 0x0e, 0x09,
+            0xda, 0x32, 0x75, 0x60, 0x0c, 0x2f, 0x09, 0xb8, 0x36, 0x77, 0x93, 0xa9, 0xac, 0xa3, 0xdb, 0x71,
+            0xcc, 0x30, 0xc5, 0x81, 0x79, 0xec, 0x3e, 0x87, 0xc1, 0x4c, 0x01, 0xd5, 0xc1, 0xf3, 0x43, 0x4f,
+            0x1d, 0x87,
+    };
+    array expected = { .len = 82, .ptr = expected_bytes };
+    if (!array_equals(out, expected)) {
+        SYS_LOG_ERR("test_hkdf_sha256 Test Case 2 failed with invalid output");
+        log_hex("out", out.ptr, out.len);
+        log_hex("expected", expected.ptr, expected.len);
+        panic("spinning...");
+    }
+    SYS_LOG_INF("test_hkdf_sha256 Test Case 2 successful");
+}
+
+static u8_t MASTER_SECRET_TEST[16] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+static u8_t SENDER_ID_TEST[1] = { 1 };
+static u8_t RECIPIENT_ID_TEST[0] = { };
+static u8_t MASTER_SALT_TEST[8] = { 0x9e, 0x7c, 0xa9, 0x22, 0x23, 0x78, 0x63, 0x40 };
+static struct pre_established_opt OPT_TEST = {
+        .aead_alg = AES_CCM_16_64_128,
+        .master_salt = {
+                .len = 8,
+                .ptr = MASTER_SALT_TEST,
+        },
+        /// default HKDF-SHA-256
+        // TODO: actually be generic over the algorithm
+        .kdf = SHA_256,
+        /// default DTLS-type replay protection & window-size 32
+        .replay_window = NULL,
+};
+
+static struct pre_established PRE_ESTABLISHED_TEST = {
+        .master_secret = {
+                .len = 16,
+                .ptr = MASTER_SECRET_TEST,
+        },
+        .sender_id = {
+                .len = sizeof(SENDER_ID_TEST),
+                .ptr = SENDER_ID_TEST,
+        },
+        .recipient_id = {
+                .len = sizeof(RECIPIENT_ID_TEST),
+                .ptr = RECIPIENT_ID_TEST,
+        },
+        .common_id_context = {
+                .len = 0,
+                .ptr = NULL,
+        },
+        .opt = &OPT_TEST,
+};
+
+void test_derive_sender_key() {
+    u8_t sender_key[16];
+    struct sender_context sctx;
+    int ret = derive_sender_context(PRE_ESTABLISHED_TEST, &sender_key[0], &sctx);
+    if (ret != OscoreNoError) {
+        panic("Error during derive_sender_context: %d, spinning...", ret);
+    }
+    u8_t expected[16] = { 0xff, 0xb1, 0x4e, 0x09, 0x3c, 0x94, 0xc9, 0xca,
+                          0xc9, 0x47, 0x16, 0x48, 0xb4, 0xf9, 0x87, 0x10 };
+    if (memcmp(sender_key, expected, 16) != 0) {
+        SYS_LOG_ERR("test_derive_sender_key failed with invalid output");
+        log_hex("sender_key", sender_key, 16);
+        log_hex("expected", expected, 16);
+        panic("spinning...");
+    }
+    SYS_LOG_INF("test_derive_sender_key successful");
+}
+
+void test_derive_recipient_key() {
+    u8_t recipient_key[16];
+    struct recipient_context rctx;
+    int ret = derive_recipient_context(PRE_ESTABLISHED_TEST, &recipient_key[0], &rctx);
+    if (ret != OscoreNoError) {
+        panic("Error during derive_recipient_context: %d, spinning...", ret);
+    }
+    u8_t expected[16] = { 0xf0, 0x91, 0x0e, 0xd7, 0x29, 0x5e, 0x6a, 0xd4,
+                          0xb5, 0x4f, 0xc7, 0x93, 0x15, 0x43, 0x02, 0xff };
+    if (memcmp(recipient_key, expected, 16) != 0) {
+        SYS_LOG_ERR("test_derive_sender_key failed with invalid output");
+        log_hex("recipient_key", recipient_key, 16);
+        log_hex("expected", expected, 16);
+        panic("spinning...");
+    }
+    SYS_LOG_INF("test_derive_recipient_key successful");
+}
+
+void test_derive_common_iv() {
+    u8_t common_iv[13];
+    struct common_context cctx;
+    int ret = derive_common_context(PRE_ESTABLISHED_TEST, &common_iv[0], &cctx);
+    if (ret != OscoreNoError) {
+        panic("Error during derive_recipient_context: %d, spinning...", ret);
+    }
+    u8_t expected[13] = { 0x46, 0x22, 0xd4, 0xdd, 0x6d, 0x94, 0x41, 0x68,
+                          0xee, 0xfb, 0x54, 0x98, 0x7c };
+    if (memcmp(common_iv, expected, 13) != 0) {
+        SYS_LOG_ERR("test_derive_sender_key failed with invalid output");
+        log_hex("common_iv", common_iv, 13);
+        log_hex("expected", expected, 13);
+        panic("spinning...");
+    }
+    SYS_LOG_INF("test_derive_common_iv successful");
+}
+
