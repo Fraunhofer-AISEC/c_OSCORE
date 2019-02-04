@@ -15,6 +15,7 @@ Developed and tested with zephyr commit
     * [Error Handling](#error-handling)
         * [Assertions / Ensure](#assertions--ensure)
     * [Packet Flow](#packet-flow)
+* [Porting c_OSCORE to another System](#porting-c_oscore-to-another-system)
 * [Quick Overview over OSCORE](#quick-overview-over-oscore)
     * [OSCORE Packet](#oscore-packet)
         * [CoAP Packet](#coap-packet)
@@ -171,7 +172,63 @@ Those macros take a `CborError` as last parameter, which is returned if the cond
     * Create output packet header
     * Write Class U options
     * Copy encrypted payload
-    
+
+# Porting c_OSCORE to another System
+
+* Glue-Code:
+    * Conversion of OSCORE Packets to CoAP Packets in
+        [`server/coap_server.c:udp_receive`](src/server/coap-server.c#L1156)
+    * Routing decrypted CoAP Packet (`coap_handle_request`)
+* Non-Zephyr dependencies:
+    * tinycrypt (AES-CCM, HMAC-SHA256)
+    * tinycbor
+* Used functions from zephyr (apart from setting up the network stack in `server/`):
+    * UDP Metadata:
+        * `get_from_ip_addr`: get sender IP address of coap packet
+    * CoAP Metadata:
+        * `coap_packet_parse`: prepare below information, parse coap options
+            * CoAP option parsing is also implemented manually for byte-arrays,
+                `coap_packet_parse` is used for convenience regarding reading from
+                the fragments
+        * `coap_header_get_version`
+        * `coap_header_get_type`
+        * `coap_header_get_token`
+        * `coap_header_get_id`
+        * `coap_packet_get_payload`
+        * `coap_packet_append_option`
+            * CoAP option encoding is also implemented manually for byte-arrays,
+                `coap_packet_append_option` is used for convenience regarding
+                writing to fragments
+        * `coap_packet_append_payload_marker`
+        * `coap_packet_append_payload`
+    * Packet handling functions:
+        * `net_pkt_unref`
+        * `net_pkt_get_rx`: get new empty receive packet
+        * `net_pkt_get_data`: get new empty data fragment
+        * `net_pkt_frag_add`: add data fragment to packet
+        * `net_frag_read`
+        * `net_frag_skip`
+        * `net_pkt_append_u8`
+        * `net_pkt_append_be16`
+        * `net_pkt_append_all`
+        * `net_pkt_set_ip_hdr_len` / `net_pkt_ip_hdr_len`
+        * `net_pkt_set_ipv6_ext_len` / `net_pkt_ipv6_ext_len`
+        * `net_pkt_set_family` / `net_pkt_family`
+        * `net_pkt_set_iface` / `net_pkt_iface`
+    * URI Parsing:
+        * `http_parser_url_init`
+        * `http_parser_parse_url`
+
+The CoAP / UDP packet parsing functions should be trivially manually implementable
+by reading the whole packet into an internal buffer and manually parsing the packet
+according to the diagrams in the next sections.
+Option parsing for byte-arrays for example is already implemented in c_OSCORE.
+An URI parsing API is required but the currently used method could be replaced by a library.
+This leaves us with `net_pkt*` and `net_frag*` functions, which depend on the
+system-specific handling of network packets.
+For this a common API abstraction layer could be introduced in form of a used header file,
+which can be implemented by each system independently.
+
 # Quick Overview over OSCORE
 
 ### OSCORE Packet
@@ -286,6 +343,7 @@ Those macros take a `CborError` as last parameter, which is returned if the cond
 
 * <https://tools.ietf.org/html/draft-ietf-core-object-security-14#section-5>
 * Enc-Structure
+* With OSCORE Header Compression
 * CBOR encoded as array
 
 ```
@@ -323,11 +381,15 @@ There are several TODOs in the code, which mark optional and unimplemented featu
 Additionally, there are some ideas which are not implemented yet, but might be of value.
 Here is an (incomplete) list of TODOs and ideas:
 
+1. Replay protection isn't implemented, but required by the spec.
 1. Support multiple Security Contexts. Currently only a single sender (the server) and receiver (the client) are supported.
     This allows multiple clients to connect to the server.
 1. Volatile memset `sender_key` and `receiver_key` after they are used and recalculate them just before use.
     That way the keys are in memory only for a short time.
     At the same time, the keys can easily be calculated from the pre-established data, so this is probably irrelevant.
+1. Initialize all arrays with zero.
+    While this should not be required, doing so prevents information leaks if uninitialized data would
+    be passed to the user.
 
 # Licensing
 
