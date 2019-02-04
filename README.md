@@ -5,7 +5,8 @@ on top of Zephyr OS for the 96Boards Nitrogen.
 The ipsp and coap_server samples of zephyr are combined to set up CoAP over 6lowpan over Bluetooth.
 On top of that OSCORE is implemented.
 
-Developed and tested with zephyr commit 3712fd34154f0db06085135e4bbfed4b63c34d85.
+Developed and tested with zephyr commit
+ [3712fd34154f0db06085135e4bbfed4b63c34d85](https://github.com/zephyrproject-rtos/zephyr/commit/3712fd34154f0db06085135e4bbfed4b63c34d85).
 
 # Building
 
