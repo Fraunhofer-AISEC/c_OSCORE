@@ -5,6 +5,8 @@ on top of Zephyr OS for the 96Boards Nitrogen.
 The ipsp and coap_server samples of zephyr are combined to set up CoAP over 6lowpan over Bluetooth.
 On top of that OSCORE is implemented.
 
+To see an example setup including how to set it up, take a look at [Example-Setup.md](Example-Setup.md)
+
 Developed and tested with zephyr commit
 [3712fd34154f0db06085135e4bbfed4b63c34d85](https://github.com/zephyrproject-rtos/zephyr/commit/3712fd34154f0db06085135e4bbfed4b63c34d85).
 
@@ -33,7 +35,7 @@ Developed and tested with zephyr commit
 # Building
 
 The arm-none-eabi-gcc toolchain must be installed.
-On archlinux, this can be done with `aurman -S arm-none-eabi-gcc`.
+On archlinux, this can be done with `pacman -S arm-none-eabi-gcc`.
 
 The zephyr repository must be accessible locally.
 It can be cloned with `git clone https://github.com/zephyrproject-rtos/zephyr`.
