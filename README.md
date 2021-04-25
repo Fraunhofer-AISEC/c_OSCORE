@@ -1,5 +1,9 @@
 # c_OSCORE
 
+#### This project has been superseded by [uoscore-uedhoc](https://github.com/Fraunhofer-AISEC/uoscore-uedhoc), which includes an improved partial rewrite of the code in this repository.
+
+---
+
 This is a partial OSCORE (draft version 14) Proof of Concept Server implementation
 on top of Zephyr OS for the 96Boards Nitrogen.
 The ipsp and coap_server samples of zephyr are combined to set up CoAP over 6lowpan over Bluetooth.
